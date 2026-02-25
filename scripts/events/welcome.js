@@ -5,8 +5,8 @@ if (!global.temp.welcomeEvent)
 module.exports = {
   config: {
     name: "welcome",
-    version: "3.0",
-    author: "Nazim Premium Edit",
+    version: "2.0",
+    author: "Nazim Stylish Edit",
     category: "events"
   },
 
@@ -20,51 +20,24 @@ module.exports = {
       multiple1: "You",
       multiple2: "You Guys",
 
-      defaultWelcomeMessage: `╔═══━━━─── • ───━━━═══╗
+defaultWelcomeMessage: `╔═══━━━─── • ───━━━═══╗
         🥀 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 🥀
 ╚═══━━━─── • ───━━━═══╝
 
-╭───❖ 🧸 𝐍𝐞𝐰 𝐌𝐞𝐦𝐛𝐞𝐫 ❖───╮
-   ➤ {userName}
-╰────────────────────╯
+🧸 𝐍𝐞𝐰 𝐌𝐞𝐦𝐛𝐞𝐫: {userName}
+🏡 𝐆𝐫𝐨𝐮𝐩: 『 {boxName} 』
 
-╭───❖ 🏡 𝐆𝐫𝐨𝐮𝐩 ❖───╮
-   ➤ 『 {boxName} 』
-╰────────────────╯
+🚀 𝐀𝐝𝐝𝐞𝐝 𝐁𝐲: {addedBy}
 
-╭───❖ 👥 𝐌𝐞𝐦𝐛𝐞𝐫 𝐂𝐨𝐮𝐧𝐭 ❖───╮
-   ➤ {memberCount} Members
-╰────────────────────────╯
+🌅 𝐒𝐞𝐬𝐬𝐢𝐨𝐧: {session}
 
-╭───❖ 🆔 𝐔𝐬𝐞𝐫 𝐈𝐃 ❖───╮
-   ➤ {uid}
-╰────────────────╯
-
-╭───❖ 🚀 𝐀𝐝𝐝𝐞𝐝 𝐁𝐲 ❖───╮
-   ➤ {addedBy}
-╰────────────────────╯
-
-╭───❖ ⏰ 𝐉𝐨𝐢𝐧 𝐓𝐢𝐦𝐞 ❖───╮
-   ➤ {timeNow}
-╰────────────────────╯
-
-╭───❖ 🌅 𝐒𝐞𝐬𝐬𝐢𝐨𝐧 ❖───╮
-   ➤ {session}
-╰────────────────╯
-
-╔══════════════════════╗
-      👑 𝐀𝐃𝐌𝐈𝐍 👑
-        Mehedi Hasan
-╚══════════════════════╝
-
-📖 “May Allah bless you in this group”
+📖 May Allah bless you in this group
 🤝 Respect Everyone
 📌 Follow All Rules
-💖 Stay Active & Enjoy
 
-╔═══━━━─── • ───━━━═══╗
-      🌸 𝐓𝐇𝐀𝐍𝐊 𝐘𝐎𝐔 🌸
-╚═══━━━─── • ───━━━═══╝`
+━━━━━━━━━━━━━━
+👑 𝐀𝐝𝐦𝐢𝐧: Mehedi Hasan
+━━━━━━━━━━━━━━`
     }
   },
 
@@ -76,10 +49,8 @@ module.exports = {
         const { threadID, author } = event;
         const dataAddedParticipants = event.logMessageData.addedParticipants;
 
-        // If bot added
-        if (dataAddedParticipants.some((item) => item.userFbId == api.getCurrentUserID())) {
+        if (dataAddedParticipants.some((item) => item.userFbId == api.getCurrentUserID()))
           return message.send(getLang("welcomeMessage"));
-        }
 
         if (!global.temp.welcomeEvent[threadID])
           global.temp.welcomeEvent[threadID] = {
@@ -96,17 +67,17 @@ module.exports = {
           if (threadData.settings.sendWelcomeMessage == false)
             return;
 
-          const threadName = threadData.threadName;
-          const memberCount = threadData.participantIDs.length;
-          const timeNow = getTime("HH:mm:ss");
           const dataAddedParticipants = global.temp.welcomeEvent[threadID].dataAddedParticipants;
+          const threadName = threadData.threadName;
+
+          let addedByName = "Unknown";
+          try {
+            const info = await api.getUserInfo(author);
+            addedByName = info[author].name;
+          } catch {}
 
           const userName = [];
           const mentions = [];
-
-          let multiple = false;
-          if (dataAddedParticipants.length > 1)
-            multiple = true;
 
           for (const user of dataAddedParticipants) {
             userName.push(user.fullName);
@@ -116,37 +87,19 @@ module.exports = {
             });
           }
 
-          const uid = dataAddedParticipants.map(u => u.userFbId).join(", ");
-
-          const addedByName = await new Promise(resolve => {
-            api.getUserInfo(author, (err, info) => {
-              if (err) resolve("Unknown");
-              else resolve(info[author].name);
-            });
-          });
+          if (userName.length == 0) return;
 
           let { welcomeMessage = getLang("defaultWelcomeMessage") } = threadData.data;
 
           welcomeMessage = welcomeMessage
             .replace(/\{userName\}/g, userName.join(", "))
             .replace(/\{boxName\}/g, threadName)
-            .replace(/\{memberCount\}/g, memberCount)
-            .replace(/\{uid\}/g, uid)
             .replace(/\{addedBy\}/g, addedByName)
-            .replace(/\{timeNow\}/g, timeNow)
-            .replace(
-              /\{multiple\}/g,
-              multiple ? getLang("multiple2") : getLang("multiple1")
-            )
-            .replace(
-              /\{session\}/g,
-              hours <= 10
-                ? getLang("session1")
-                : hours <= 12
-                ? getLang("session2")
-                : hours <= 18
-                ? getLang("session3")
-                : getLang("session4")
+            .replace(/\{session\}/g,
+              hours <= 10 ? getLang("session1") :
+              hours <= 12 ? getLang("session2") :
+              hours <= 18 ? getLang("session3") :
+              getLang("session4")
             );
 
           message.send({
