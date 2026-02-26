@@ -1,73 +1,95 @@
+const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
+const mahmud = async () => {
+        const response = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
+        return response.data.mahmud;
+};
+
 module.exports = {
-  config: {
-    name: "vip",
-    version: "2.0.0",
-    author: "Gaming Nazim",
-    role: 2, // Only Admin can use
-    shortDescription: "VIP Management System",
-    category: "admin",
-    guide: {
-      en: "{pn} add @user\n{pn} remove @user\n{pn} list"
-    }
-  },
+        config: {
+                name: "horny",
+                aliases: ["hornyvid", "hvideo"],
+                version: "1.7",
+                author: "MahMUD",
+                countDown: 10,
+                role: 0,
+                description: {
+                        bn: "রেন্ডম হর্নি ভিডিও দেখুন (১৮+)",
+                        en: "Watch random horny videos (18+)"
+                },
+                category: "18+",
+                guide: {
+                        bn: '   {pn}: রেন্ডম ভিডিও পেতে ব্যবহার করুন',
+                        en: '   {pn}: Use to get a random video'
+                }
+        },
 
-  onStart: async function ({ api, event, message, args }) {
+        langs: {
+                bn: {
+                        notFound: "× কোনো ভিডিও পাওয়া যায়নি বেবি!",
+                        downloadErr: "× ভিডিও ডাউনলোড করতে সমস্যা হয়েছে।",
+                        success: "𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐇𝐨𝐫𝐧𝐲 𝐯𝐢𝐝𝐞𝐨 <😘",
+                        error: "× সমস্যা হয়েছে: %1। প্রয়োজনে Contact MahMUD।"
+                },
+                en: {
+                        notFound: "× No videos found baby!",
+                        downloadErr: "× Video download error.",
+                        success: "𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐇𝐨𝐫𝐧𝐲 𝐯𝐢𝐝𝐞𝐨 <😘",
+                        error: "× API error: %1. Contact MahMUD for help."
+                }
+        },
 
-    const vipPath = path.join(__dirname, "cache", "vip.json");
-    const cacheDir = path.join(__dirname, "cache");
+        onStart: async function ({ api, event, message, getLang }) {
+                const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68);
+                if (this.config.author !== authorName) {
+                        return api.sendMessage("You are not authorized to change the author name.", event.threadID, event.messageID);
+                }
 
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
-    if (!fs.existsSync(vipPath)) fs.writeFileSync(vipPath, JSON.stringify([]));
+                const cacheDir = path.join(__dirname, "cache");
+                const filePath = path.join(cacheDir, `horny_${Date.now()}.mp4`);
 
-    let vipData = JSON.parse(fs.readFileSync(vipPath));
-    const mention = Object.keys(event.mentions);
-    const action = args[0];
+                try {
+                        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-    if (!action) {
-      return message.reply("⚡ Usage:\n!vip add @user\n!vip remove @user\n!vip list");
-    }
+                        const apiUrl = await mahmud();
+                        const res = await axios.get(`${apiUrl}/api/album/mahmud/videos/horny2?userID=${event.senderID}`);
 
-    // ✅ ADD VIP
-    if (action === "add") {
-      if (!mention[0]) return message.reply("⚠️ Please tag a user!");
+                        if (!res.data.success || !res.data.videos.length) {
+                                return message.reply(getLang("notFound"));
+                        }
 
-      if (vipData.includes(mention[0])) {
-        return message.reply("⚠️ User Already VIP!");
-      }
+                        const url = res.data.videos[Math.floor(Math.random() * res.data.videos.length)];
 
-      vipData.push(mention[0]);
-      fs.writeFileSync(vipPath, JSON.stringify(vipData, null, 2));
+                        const video = await axios({
+                                url,
+                                method: "GET",
+                                responseType: "stream",
+                                headers: { 'User-Agent': 'Mozilla/5.0' }
+                        });
 
-      return message.reply("✅ User Successfully Added To VIP List!");
-    }
+                        const writer = fs.createWriteStream(filePath);
+                        video.data.pipe(writer);
 
-    // ❌ REMOVE VIP
-    if (action === "remove") {
-      if (!mention[0]) return message.reply("⚠️ Please tag a user!");
+                        writer.on("finish", () => {
+                                message.reply({
+                                        body: getLang("success"),
+                                        attachment: fs.createReadStream(filePath)
+                                }, () => {
+                                        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                                });
+                        });
 
-      if (!vipData.includes(mention[0])) {
-        return message.reply("⚠️ This user is not VIP!");
-      }
+                        writer.on("error", (err) => {
+                                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                                return message.reply(getLang("downloadErr"));
+                        });
 
-      vipData = vipData.filter(id => id !== mention[0]);
-      fs.writeFileSync(vipPath, JSON.stringify(vipData, null, 2));
-
-      return message.reply("❌ User Removed From VIP List!");
-    }
-
-    // 📜 VIP LIST
-    if (action === "list") {
-      if (!vipData.length) return message.reply("❌ No VIP Users Found!");
-
-      let msg = "💎 VIP USER LIST 💎\n\n";
-      vipData.forEach((id, i) => {
-        msg += `${i + 1}. ${id}\n`;
-      });
-
-      return message.reply(msg);
-    }
-  }
+                } catch (err) {
+                        console.error("Horny command error:", err);
+                        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+                        return message.reply(getLang("error", err.message));
+                }
+        }
 };
